@@ -3,7 +3,35 @@ import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const FALLBACK_SITE_URL = "http://localhost:3000";
+
+/**
+ * 배포 도메인 결정.
+ * 환경 변수가 "빈 문자열"로 주입되는 경우가 있어 값이 실제로 있는지까지 확인하고,
+ * 형식이 잘못되면 빌드를 깨뜨리지 않고 다음 후보로 넘어간다.
+ */
+function resolveSiteUrl(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (!value) continue;
+    const withProtocol = /^https?:\/\//i.test(value) ? value : "https://" + value;
+    try {
+      return new URL(withProtocol).origin;
+    } catch {
+      // 형식이 잘못된 값은 무시하고 다음 후보를 확인한다.
+    }
+  }
+
+  return FALLBACK_SITE_URL;
+}
+
+const siteUrl = resolveSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
