@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SAFEFRAME">
+  <rect width="512" height="512" rx="112" fill="#0B0B0C" />
+  <g transform="translate(154 77)">
+    <rect x="0" y="0" width="204" height="358" rx="22" fill="#000" />
+    <rect x="0" y="0" width="204" height="43" rx="14" fill="#FF453A" fill-opacity="0.9" />
+    <rect x="0" y="286" width="204" height="72" rx="14" fill="#FF453A" fill-opacity="0.9" />
+    <rect x="151" y="136" width="53" height="122" rx="12" fill="#FF453A" fill-opacity="0.9" />
+    <rect x="33" y="86" width="102" height="150" rx="8" fill="none" stroke="#30D158" stroke-width="8" />
+    <rect x="0" y="0" width="204" height="358" rx="22" fill="none" stroke="#FFFFFF" stroke-width="14" />
+  </g>
+</svg>
