@@ -3,6 +3,7 @@
 import { Download, RotateCcw, Share2, X } from "lucide-react";
 
 import type { CaptureShot } from "@/lib/capture";
+import { getCssFilter, getFilter, SWATCH_GRADIENT } from "@/lib/filters";
 
 type Props = {
   shot: CaptureShot;
@@ -40,9 +41,21 @@ export function CaptureResult({
           >
             <X size={22} aria-hidden="true" />
           </button>
-          <span className="rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-semibold tabular-nums backdrop-blur-sm">
-            {shot.width} × {shot.height}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {shot.filterId !== "none" ? (
+              <span className="flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1.5 text-[12px] font-semibold backdrop-blur-sm">
+                <span
+                  className="block h-3.5 w-3.5 rounded-full ring-1 ring-white/25"
+                  style={{ background: SWATCH_GRADIENT, filter: getCssFilter(shot.filterId, 1) }}
+                  aria-hidden="true"
+                />
+                {getFilter(shot.filterId).name}
+              </span>
+            ) : null}
+            <span className="rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-semibold tabular-nums backdrop-blur-sm">
+              {shot.width} × {shot.height}
+            </span>
+          </div>
         </div>
       </div>
 

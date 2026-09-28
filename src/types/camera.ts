@@ -63,8 +63,12 @@ export type UserCameraSettings = {
   overlayOpacity: number;
   includeOverlayInCapture: boolean;
   mirrorFrontCamera: boolean;
-  /** 촬영 가이드 (인물/제품/음식/텍스트) */
+  /** 장면 가이드 (인물/제품/음식/텍스트) */
   guideId: GuideId;
+  /** 촬영 필터 */
+  filterId: string;
+  /** 필터 강도 0~1 */
+  filterStrength: number;
   zoneStyle: ZoneStyle;
   labelsEnabled: boolean;
   /** Custom 프리셋에서 사용하는 마진 */

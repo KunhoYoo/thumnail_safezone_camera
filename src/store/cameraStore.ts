@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { DEFAULT_FILTER_ID, getFilter } from "@/lib/filters";
 import { clamp, clamp01 } from "@/lib/geometry";
+import { getGuide } from "@/lib/guides";
 import { DEFAULT_PLATFORM_ID, getPreset } from "@/lib/presets";
 import type { FacingMode, GuideId, SafeZones, UserCameraSettings, ZoneStyle } from "@/types/camera";
 
@@ -17,6 +19,8 @@ export const DEFAULT_SETTINGS: UserCameraSettings = {
   includeOverlayInCapture: false,
   mirrorFrontCamera: true,
   guideId: "none",
+  filterId: DEFAULT_FILTER_ID,
+  filterStrength: 0.8,
   zoneStyle: "fill",
   labelsEnabled: true,
   customZones: { top: 0.12, bottom: 0.18, left: 0.06, right: 0.12 },
@@ -63,8 +67,15 @@ export const settingsActions = {
   setMirrorFrontCamera(mirrorFrontCamera: boolean) {
     useCameraStore.setState({ mirrorFrontCamera });
   },
+  /** 장면을 고르면 추천 필터가 함께 적용된다. (필터는 이후 개별 변경 가능) */
   setGuideId(guideId: GuideId) {
-    useCameraStore.setState({ guideId });
+    useCameraStore.setState({ guideId, filterId: getGuide(guideId).filterId });
+  },
+  setFilterId(filterId: string) {
+    useCameraStore.setState({ filterId: getFilter(filterId).id });
+  },
+  setFilterStrength(filterStrength: number) {
+    useCameraStore.setState({ filterStrength: clamp(filterStrength, 0, 1) });
   },
   setZoneStyle(zoneStyle: ZoneStyle) {
     useCameraStore.setState({ zoneStyle });
@@ -102,6 +113,9 @@ function sanitize(persisted: unknown, fallback: UserCameraSettings): UserCameraS
     includeOverlayInCapture: toBoolean(raw.includeOverlayInCapture, fallback.includeOverlayInCapture),
     mirrorFrontCamera: toBoolean(raw.mirrorFrontCamera, fallback.mirrorFrontCamera),
     guideId: raw.guideId && GUIDE_IDS.includes(raw.guideId) ? raw.guideId : fallback.guideId,
+    filterId: typeof raw.filterId === "string" ? getFilter(raw.filterId).id : fallback.filterId,
+    filterStrength:
+      typeof raw.filterStrength === "number" ? clamp(raw.filterStrength, 0, 1) : fallback.filterStrength,
     zoneStyle: raw.zoneStyle && ZONE_STYLES.includes(raw.zoneStyle) ? raw.zoneStyle : fallback.zoneStyle,
     labelsEnabled: toBoolean(raw.labelsEnabled, fallback.labelsEnabled),
     customZones: zones && typeof zones === "object" ? sanitizeZones(zones, fallback.customZones) : fallback.customZones,

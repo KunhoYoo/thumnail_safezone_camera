@@ -11,11 +11,13 @@ type Props = {
   /** 프레임 밖 영역을 어둡게 처리 */
   shade: boolean;
   visible: boolean;
+  /** CSS filter 문자열 (프리뷰는 GPU 로 처리) */
+  filter: string;
   children?: ReactNode;
 };
 
 /** 카메라 영상 + 프레임 바깥 음영. 오버레이는 children 으로 쌓는다. */
-export function CameraView({ videoRef, frame, mirrored, shade, visible, children }: Props) {
+export function CameraView({ videoRef, frame, mirrored, shade, visible, filter, children }: Props) {
   return (
     <>
       <video
@@ -23,8 +25,9 @@ export function CameraView({ videoRef, frame, mirrored, shade, visible, children
         className="absolute inset-0 h-full w-full object-cover"
         style={{
           transform: mirrored ? "scaleX(-1)" : undefined,
+          filter: filter === "none" ? undefined : filter,
           opacity: visible ? 1 : 0,
-          transition: "opacity 200ms ease-out",
+          transition: "opacity 200ms ease-out, filter 180ms ease-out",
         }}
         playsInline
         autoPlay

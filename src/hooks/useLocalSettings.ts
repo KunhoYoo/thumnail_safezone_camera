@@ -25,6 +25,8 @@ export function useLocalSettings(): {
       includeOverlayInCapture: state.includeOverlayInCapture,
       mirrorFrontCamera: state.mirrorFrontCamera,
       guideId: state.guideId,
+      filterId: state.filterId,
+      filterStrength: state.filterStrength,
       zoneStyle: state.zoneStyle,
       labelsEnabled: state.labelsEnabled,
       customZones: state.customZones,

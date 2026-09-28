@@ -1,7 +1,16 @@
-import { Camera, Download, LayoutTemplate, ShieldCheck, WifiOff } from "lucide-react";
+import { Camera, Download, LayoutTemplate, ShieldCheck, Wand2, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { PhonePreview } from "@/components/PhonePreview";
+import { getCssFilter, SWATCH_GRADIENT } from "@/lib/filters";
+
+const SCENE_SWATCHES = [
+  { filterId: "none", label: "원본" },
+  { filterId: "portrait", label: "인물" },
+  { filterId: "food", label: "음식" },
+  { filterId: "product", label: "제품" },
+  { filterId: "film", label: "필름" },
+];
 
 const FEATURES = [
   {
@@ -10,9 +19,14 @@ const FEATURES = [
     body: "Shorts · Reels · TikTok · 일반 세로 · 커스텀 프리셋을 카메라 위에 바로 표시합니다.",
   },
   {
+    icon: Wand2,
+    title: "장면별 필터",
+    body: "인물 · 음식 · 제품 장면을 고르면 구도 가이드와 어울리는 색 보정이 함께 적용됩니다.",
+  },
+  {
     icon: Camera,
     title: "촬영 가이드",
-    body: "삼분할선, 중앙선, 인물 · 제품 · 음식 · 텍스트 구도 가이드를 켜고 끌 수 있습니다.",
+    body: "삼분할선, 중앙선, 얼굴 · 접시 · 크롭 영역 가이드를 켜고 끌 수 있습니다.",
   },
   {
     icon: Download,
@@ -61,7 +75,21 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <PhonePreview className="max-w-[212px]" />
+        <PhonePreview className="max-w-[212px]" filterId="portrait" />
+
+        {/* 장면별 필터 미리보기 — 실제 필터를 적용한 색상 칩 */}
+        <div className="flex items-center gap-2.5">
+          {SCENE_SWATCHES.map((scene) => (
+            <div key={scene.filterId} className="flex flex-col items-center gap-1.5">
+              <span
+                className="block h-11 w-11 rounded-2xl ring-1 ring-white/15"
+                style={{ background: SWATCH_GRADIENT, filter: getCssFilter(scene.filterId, 1) }}
+                aria-hidden="true"
+              />
+              <span className="text-[11px] font-medium text-white/45">{scene.label}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="pb-safe px-5">

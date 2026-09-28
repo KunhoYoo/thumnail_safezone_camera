@@ -1,29 +1,29 @@
 "use client";
 
-import {
-  Eye,
-  EyeOff,
-  Grid3x3,
-  SlidersHorizontal,
-  SwitchCamera,
-  X,
-  Zap,
-  ZapOff,
-} from "lucide-react";
+import { Eye, EyeOff, Grid3x3, Lightbulb, SlidersHorizontal, SwitchCamera, Wand2, X, Zap, ZapOff } from "lucide-react";
 import Link from "next/link";
 import type { Ref } from "react";
 
 import { CaptureButton } from "@/components/CaptureButton";
+import { FilterSelector } from "@/components/FilterSelector";
 import { PlatformSelector } from "@/components/PlatformSelector";
-import { getGuideName } from "@/lib/guides";
+import { getFilter } from "@/lib/filters";
+import { getGuide, GUIDE_OPTIONS } from "@/lib/guides";
 import { OPACITY_RANGE } from "@/store/cameraStore";
 import type { GuideId, PlatformPreset } from "@/types/camera";
 
 const ICON_BUTTON =
   "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors active:bg-black/60 disabled:opacity-35";
 
+export type BottomTab = "platform" | "filter" | "scene";
+
+const TABS: { id: BottomTab; label: string }[] = [
+  { id: "platform", label: "플랫폼" },
+  { id: "filter", label: "필터" },
+  { id: "scene", label: "장면" },
+];
+
 type TopBarProps = {
-  /** 프레임 배치 계산을 위해 컨트롤이 실제로 차지하는 높이를 측정한다. */
   contentRef?: Ref<HTMLDivElement>;
   presetName: string;
   canSwitchCamera: boolean;
@@ -31,7 +31,6 @@ type TopBarProps = {
   torchSupported: boolean;
   torchOn: boolean;
   onToggleTorch: () => void;
-  onOpenSettings: () => void;
 };
 
 export function CameraTopBar({
@@ -42,7 +41,6 @@ export function CameraTopBar({
   torchSupported,
   torchOn,
   onToggleTorch,
-  onOpenSettings,
 }: TopBarProps) {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/55 to-transparent pb-8">
@@ -78,10 +76,6 @@ export function CameraTopBar({
         >
           <SwitchCamera size={21} aria-hidden="true" />
         </button>
-
-        <button type="button" onClick={onOpenSettings} aria-label="설정 열기" className={ICON_BUTTON}>
-          <SlidersHorizontal size={20} aria-hidden="true" />
-        </button>
       </div>
     </div>
   );
@@ -89,6 +83,8 @@ export function CameraTopBar({
 
 type BottomBarProps = {
   contentRef?: Ref<HTMLDivElement>;
+  tab: BottomTab;
+  onTabChange: (tab: BottomTab) => void;
   presets: PlatformPreset[];
   activePresetId: string;
   onSelectPreset: (platformId: string) => void;
@@ -96,85 +92,192 @@ type BottomBarProps = {
   onToggleOverlay: () => void;
   opacity: number;
   onOpacityChange: (value: number) => void;
+  filterId: string;
+  filterStrength: number;
+  onSelectFilter: (filterId: string) => void;
+  onFilterStrengthChange: (value: number) => void;
+  guideId: GuideId;
+  onSelectGuide: (guideId: GuideId) => void;
   gridEnabled: boolean;
   onToggleGrid: () => void;
-  guideId: GuideId;
-  onOpenGuides: () => void;
+  onOpenSettings: () => void;
   onCapture: () => void;
   captureDisabled: boolean;
   capturing: boolean;
 };
 
-export function CameraBottomBar({
-  contentRef,
-  presets,
-  activePresetId,
-  onSelectPreset,
-  overlayVisible,
-  onToggleOverlay,
-  opacity,
-  onOpacityChange,
-  gridEnabled,
-  onToggleGrid,
-  guideId,
-  onOpenGuides,
-  onCapture,
-  captureDisabled,
-  capturing,
-}: BottomBarProps) {
+export function CameraBottomBar(props: BottomBarProps) {
+  const {
+    contentRef,
+    tab,
+    onTabChange,
+    presets,
+    activePresetId,
+    onSelectPreset,
+    overlayVisible,
+    onToggleOverlay,
+    opacity,
+    onOpacityChange,
+    filterId,
+    filterStrength,
+    onSelectFilter,
+    onFilterStrengthChange,
+    guideId,
+    onSelectGuide,
+    gridEnabled,
+    onToggleGrid,
+    onOpenSettings,
+    onCapture,
+    captureDisabled,
+    capturing,
+  } = props;
+
+  const filterActive = getFilter(filterId).id !== "none";
+
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/75 via-black/45 to-transparent pt-10">
+    <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-10">
       <div ref={contentRef} className="pb-safe px-3">
-        <div className="mb-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onToggleOverlay}
-            aria-pressed={overlayVisible}
-            aria-label={overlayVisible ? "안전영역 가이드 숨기기" : "안전영역 가이드 보이기"}
-            className={ICON_BUTTON}
-          >
-            {overlayVisible ? <Eye size={20} aria-hidden="true" /> : <EyeOff size={20} aria-hidden="true" />}
-          </button>
+        {/* 1행 — 선택한 탭에 따라 달라지는 보조 컨트롤 (높이는 항상 동일) */}
+        <div className="mb-2.5 flex h-11 items-center gap-3">
+          {tab === "platform" ? (
+            <>
+              <button
+                type="button"
+                onClick={onToggleOverlay}
+                aria-pressed={overlayVisible}
+                aria-label={overlayVisible ? "안전영역 가이드 숨기기" : "안전영역 가이드 보이기"}
+                className={ICON_BUTTON}
+              >
+                {overlayVisible ? <Eye size={20} aria-hidden="true" /> : <EyeOff size={20} aria-hidden="true" />}
+              </button>
+              {overlayVisible ? (
+                <label className="flex flex-1 items-center gap-3">
+                  <span className="sr-only">안전영역 투명도</span>
+                  <input
+                    type="range"
+                    className="sf-range flex-1"
+                    min={OPACITY_RANGE.min}
+                    max={OPACITY_RANGE.max}
+                    step={0.05}
+                    value={opacity}
+                    onChange={(event) => onOpacityChange(Number(event.target.value))}
+                    aria-valuetext={Math.round(opacity * 100) + "%"}
+                  />
+                  <span className="w-10 text-right text-[12px] font-semibold tabular-nums text-white/70">
+                    {Math.round(opacity * 100)}%
+                  </span>
+                </label>
+              ) : (
+                <span className="flex-1 text-[12px] font-medium text-white/55">안전영역 가이드 꺼짐</span>
+              )}
+            </>
+          ) : null}
 
-          {overlayVisible ? (
-            <label className="flex flex-1 items-center gap-3">
-              <span className="sr-only">안전영역 투명도</span>
-              <input
-                type="range"
-                className="sf-range flex-1"
-                min={OPACITY_RANGE.min}
-                max={OPACITY_RANGE.max}
-                step={0.05}
-                value={opacity}
-                onChange={(event) => onOpacityChange(Number(event.target.value))}
-                aria-valuetext={Math.round(opacity * 100) + "%"}
-              />
-              <span className="w-10 text-right text-[12px] font-semibold tabular-nums text-white/70">
-                {Math.round(opacity * 100)}%
+          {tab === "filter" ? (
+            <>
+              <span className={ICON_BUTTON + " pointer-events-none"} aria-hidden="true">
+                <Wand2 size={19} />
               </span>
-            </label>
-          ) : (
-            <span className="flex-1 text-[12px] font-medium text-white/60">가이드 꺼짐</span>
-          )}
+              {filterActive ? (
+                <label className="flex flex-1 items-center gap-3">
+                  <span className="sr-only">필터 강도</span>
+                  <input
+                    type="range"
+                    className="sf-range flex-1"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={filterStrength}
+                    onChange={(event) => onFilterStrengthChange(Number(event.target.value))}
+                    aria-valuetext={Math.round(filterStrength * 100) + "%"}
+                  />
+                  <span className="w-10 text-right text-[12px] font-semibold tabular-nums text-white/70">
+                    {Math.round(filterStrength * 100)}%
+                  </span>
+                </label>
+              ) : (
+                <span className="flex-1 text-[12px] font-medium text-white/55">
+                  필터를 고르면 강도를 조절할 수 있어요
+                </span>
+              )}
+            </>
+          ) : null}
+
+          {tab === "scene" ? (
+            <>
+              <span className={ICON_BUTTON + " pointer-events-none"} aria-hidden="true">
+                <Lightbulb size={19} />
+              </span>
+              <span className="flex-1 text-[12px] font-medium leading-snug text-white/70">
+                {getGuide(guideId).tip}
+              </span>
+            </>
+          ) : null}
         </div>
 
-        <div className="mb-3">
-          <PlatformSelector presets={presets} activeId={activePresetId} onSelect={onSelectPreset} />
+        {/* 2행 — 탭 */}
+        <div
+          className="mb-2.5 flex gap-1 rounded-full bg-black/40 p-1 backdrop-blur-sm"
+          role="tablist"
+          aria-label="카메라 도구"
+        >
+          {TABS.map((item) => {
+            const active = item.id === tab;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onTabChange(item.id)}
+                className={
+                  "h-8 flex-1 rounded-full text-[12px] font-bold transition-colors " +
+                  (active ? "bg-white text-black" : "text-white/65 active:text-white")
+                }
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
+        {/* 3행 — 탭별 선택지 */}
+        <div className="mb-2.5">
+          {tab === "platform" ? (
+            <PlatformSelector presets={presets} activeId={activePresetId} onSelect={onSelectPreset} />
+          ) : null}
+
+          {tab === "filter" ? (
+            <FilterSelector activeId={filterId} strength={filterStrength} onSelect={onSelectFilter} />
+          ) : null}
+
+          {tab === "scene" ? (
+            <div className="sf-scroll-x -mx-1 flex gap-2 px-1" role="radiogroup" aria-label="장면">
+              {GUIDE_OPTIONS.map((option) => {
+                const active = option.id === guideId;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    aria-label={option.name + ", " + option.hint}
+                    onClick={() => onSelectGuide(option.id)}
+                    className={
+                      "flex h-11 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold whitespace-nowrap transition-colors " +
+                      (active ? "bg-white text-black" : "bg-white/12 text-white/80 active:bg-white/25")
+                    }
+                  >
+                    {option.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        {/* 4행 — 촬영 */}
         <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onOpenGuides}
-            className="flex h-11 min-w-[74px] items-center justify-center gap-1.5 rounded-full bg-black/40 px-3 text-[12px] font-semibold text-white backdrop-blur-sm transition-colors active:bg-black/60"
-            aria-label={"촬영 가이드 선택, 현재 " + getGuideName(guideId)}
-          >
-            <span className="text-white/60">가이드</span>
-            <span>{getGuideName(guideId)}</span>
-          </button>
-
-          <CaptureButton onCapture={onCapture} disabled={captureDisabled} busy={capturing} />
-
           <button
             type="button"
             onClick={onToggleGrid}
@@ -186,6 +289,17 @@ export function CameraBottomBar({
             }
           >
             <Grid3x3 size={20} aria-hidden="true" />
+          </button>
+
+          <CaptureButton onCapture={onCapture} disabled={captureDisabled} busy={capturing} />
+
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="설정 열기"
+            className="grid h-11 w-[74px] place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors active:bg-black/60"
+          >
+            <SlidersHorizontal size={20} aria-hidden="true" />
           </button>
         </div>
       </div>

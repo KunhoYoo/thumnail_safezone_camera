@@ -11,16 +11,61 @@ export type GuideShape =
   | { kind: "vline"; x: number; label?: string }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; label?: string };
 
-export const GUIDE_OPTIONS: { id: GuideId; name: string; hint: string }[] = [
-  { id: "none", name: "없음", hint: "가이드 없이 촬영" },
-  { id: "person", name: "인물", hint: "얼굴 위치 · 눈높이 · 헤드룸" },
-  { id: "product", name: "제품", hint: "중앙 배치 · 4:5 / 1:1 크롭" },
-  { id: "food", name: "음식", hint: "접시 중심 · 45도 구도" },
-  { id: "text", name: "텍스트", hint: "제목 · 하단 CTA 안전 영역" },
+export type GuideOption = {
+  id: GuideId;
+  name: string;
+  hint: string;
+  /** 장면을 고르면 함께 적용되는 추천 필터 */
+  filterId: string;
+  /** 선택 시 한 번 보여주는 촬영 팁 */
+  tip: string;
+};
+
+/** 장면 = 구도 가이드 + 추천 필터 + 촬영 팁 */
+export const GUIDE_OPTIONS: GuideOption[] = [
+  {
+    id: "none",
+    name: "기본",
+    hint: "가이드 없이 촬영",
+    filterId: "none",
+    tip: "안전영역만 보면서 자유롭게 촬영하세요.",
+  },
+  {
+    id: "person",
+    name: "인물",
+    hint: "얼굴 · 눈높이 · 헤드룸",
+    filterId: "portrait",
+    tip: "눈높이 선에 눈을 맞추면 안정적인 구도가 됩니다.",
+  },
+  {
+    id: "product",
+    name: "제품",
+    hint: "중앙 배치 · 4:5 / 1:1 크롭",
+    filterId: "product",
+    tip: "크롭 선 안쪽에 제품을 두면 어디에 올려도 잘리지 않습니다.",
+  },
+  {
+    id: "food",
+    name: "음식",
+    hint: "접시 중심 · 45도 구도",
+    filterId: "food",
+    tip: "45도 선을 따라 비스듬히 잡으면 입체감이 살아납니다.",
+  },
+  {
+    id: "text",
+    name: "텍스트",
+    hint: "제목 · 하단 CTA 영역",
+    filterId: "vivid",
+    tip: "자막이 들어갈 자리는 비워두고 촬영하세요.",
+  },
 ];
 
+export function getGuide(id: GuideId): GuideOption {
+  return GUIDE_OPTIONS.find((option) => option.id === id) ?? GUIDE_OPTIONS[0];
+}
+
 export function getGuideName(id: GuideId): string {
-  return GUIDE_OPTIONS.find((option) => option.id === id)?.name ?? "없음";
+  return getGuide(id).name;
 }
 
 /**

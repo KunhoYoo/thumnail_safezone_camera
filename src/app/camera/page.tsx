@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { CameraBottomBar, CameraTopBar } from "@/components/CameraControls";
+import { type BottomTab, CameraBottomBar, CameraTopBar } from "@/components/CameraControls";
 import { CameraView } from "@/components/CameraView";
 import { CaptureResult } from "@/components/CaptureResult";
 import { GuideOverlay } from "@/components/GuideOverlay";
@@ -13,6 +13,7 @@ import { useCamera } from "@/hooks/useCamera";
 import { useElementSize } from "@/hooks/useElementSize";
 import { useLocalSettings } from "@/hooks/useLocalSettings";
 import { captureShot, releaseShot, type CaptureShot } from "@/lib/capture";
+import { getCssFilter } from "@/lib/filters";
 import { fitFrame, parseAspect } from "@/lib/geometry";
 import { getGuideShapes } from "@/lib/guides";
 import { CUSTOM_PLATFORM_ID, PLATFORM_PRESETS, resolvePreset } from "@/lib/presets";
@@ -32,6 +33,7 @@ export default function CameraPage() {
   const shotRef = useRef<CaptureShot | null>(null);
 
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [tab, setTab] = useState<BottomTab>("platform");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<SheetSection>("platform");
   const [shot, setShot] = useState<CaptureShot | null>(null);
@@ -59,6 +61,10 @@ export default function CameraPage() {
     return { ...fitted, y: fitted.y + topBarSize.height + gap };
   }, [stageSize, topBarSize.height, bottomBarSize.height, aspect]);
   const guides = useMemo(() => getGuideShapes(settings.guideId, aspect), [settings.guideId, aspect]);
+  const cssFilter = useMemo(
+    () => getCssFilter(settings.filterId, settings.filterStrength),
+    [settings.filterId, settings.filterStrength],
+  );
 
   // 저장된 설정을 불러오기 전에는 카메라를 시작하지 않는다. (facingMode 가 바뀌며 재시작되는 것을 막는다)
   const camera = useCamera({ facingMode: settings.facingMode, active: hydrated });
@@ -112,6 +118,8 @@ export default function CameraPage() {
         centerLine: settings.centerLineEnabled,
         guides,
         mirror: mirrored,
+        filterId: settings.filterId,
+        filterStrength: settings.filterStrength,
       });
       releaseShot(shotRef.current);
       shotRef.current = next;
@@ -175,6 +183,7 @@ export default function CameraPage() {
           mirrored={mirrored}
           shade={cameraReady}
           visible={cameraReady}
+          filter={cssFilter}
         >
           {cameraReady && overlayVisible ? (
             <>
@@ -210,14 +219,12 @@ export default function CameraPage() {
               torchSupported={camera.torchSupported && settings.facingMode === "environment"}
               torchOn={camera.torchOn}
               onToggleTorch={() => void camera.toggleTorch()}
-              onOpenSettings={() => {
-                setSheetSection("platform");
-                setSheetOpen(true);
-              }}
             />
 
             <CameraBottomBar
               contentRef={bottomBarRef}
+              tab={tab}
+              onTabChange={setTab}
               presets={PLATFORM_PRESETS}
               activePresetId={settings.platformId}
               onSelectPreset={handleSelectPreset}
@@ -225,11 +232,16 @@ export default function CameraPage() {
               onToggleOverlay={() => setOverlayVisible((value) => !value)}
               opacity={settings.overlayOpacity}
               onOpacityChange={actions.setOverlayOpacity}
+              filterId={settings.filterId}
+              filterStrength={settings.filterStrength}
+              onSelectFilter={actions.setFilterId}
+              onFilterStrengthChange={actions.setFilterStrength}
+              guideId={settings.guideId}
+              onSelectGuide={actions.setGuideId}
               gridEnabled={settings.gridEnabled}
               onToggleGrid={() => actions.setGridEnabled(!settings.gridEnabled)}
-              guideId={settings.guideId}
-              onOpenGuides={() => {
-                setSheetSection("guide");
+              onOpenSettings={() => {
+                setSheetSection("platform");
                 setSheetOpen(true);
               }}
               onCapture={() => void handleCapture()}

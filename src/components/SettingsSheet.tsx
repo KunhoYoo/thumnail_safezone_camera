@@ -1,15 +1,17 @@
 "use client";
 
-import { RotateCcw, X } from "lucide-react";
+import { Lightbulb, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { FilterSelector } from "@/components/FilterSelector";
 import { PlatformSelector } from "@/components/PlatformSelector";
-import { GUIDE_OPTIONS } from "@/lib/guides";
+import { getFilter } from "@/lib/filters";
+import { getGuide, GUIDE_OPTIONS } from "@/lib/guides";
 import { PLATFORM_PRESETS } from "@/lib/presets";
 import { OPACITY_RANGE, ZONE_RANGE, type settingsActions } from "@/store/cameraStore";
 import type { SafeZones, UserCameraSettings, ZoneStyle } from "@/types/camera";
 
-export type SheetSection = "platform" | "guide" | "custom";
+export type SheetSection = "platform" | "guide" | "filter" | "custom";
 
 type Props = {
   open: boolean;
@@ -38,6 +40,7 @@ export function SettingsSheet({ open, onClose, settings, actions, isCustomPreset
   const sectionRefs = useRef<Record<SheetSection, HTMLDivElement | null>>({
     platform: null,
     guide: null,
+    filter: null,
     custom: null,
   });
 
@@ -151,7 +154,7 @@ export function SettingsSheet({ open, onClose, settings, actions, isCustomPreset
           ) : null}
 
           <Section
-            title="촬영 가이드"
+            title="장면"
             ref={(node) => {
               sectionRefs.current.guide = node;
             }}
@@ -178,6 +181,46 @@ export function SettingsSheet({ open, onClose, settings, actions, isCustomPreset
                 );
               })}
             </div>
+            <p className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-white/50">
+              <Lightbulb size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+              {getGuide(settings.guideId).tip} 장면을 고르면 추천 필터가 함께 적용됩니다.
+            </p>
+          </Section>
+
+          <Section
+            title="필터"
+            ref={(node) => {
+              sectionRefs.current.filter = node;
+            }}
+          >
+            <FilterSelector
+              activeId={settings.filterId}
+              strength={settings.filterStrength}
+              onSelect={actions.setFilterId}
+              variant="grid"
+            />
+            <label className="mt-4 block">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[14px] font-medium">필터 강도</span>
+                <span className="text-[12px] font-semibold tabular-nums text-white/60">
+                  {Math.round(settings.filterStrength * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                className="sf-range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={settings.filterStrength}
+                onChange={(event) => actions.setFilterStrength(Number(event.target.value))}
+                aria-label="필터 강도"
+                disabled={settings.filterId === "none"}
+              />
+              <p className="mt-1 text-[12px] text-white/45">
+                {getFilter(settings.filterId).hint} · 저장되는 사진에도 그대로 적용됩니다.
+              </p>
+            </label>
           </Section>
 
           <Section title="표시">

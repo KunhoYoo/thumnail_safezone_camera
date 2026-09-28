@@ -1,3 +1,11 @@
+import {
+  applyFilterToCanvas,
+  getFilter,
+  isIdentity,
+  mixParams,
+  supportsCanvasFilter,
+  toCssFilter,
+} from "@/lib/filters";
 import { containerRectToSource, type Rect, type Size } from "@/lib/geometry";
 import type { GuideShape } from "@/lib/guides";
 import { paintOverlay } from "@/lib/overlayPaint";
@@ -18,6 +26,7 @@ export type CaptureShot = {
   width: number;
   height: number;
   platformId: string;
+  filterId: string;
   createdAt: number;
 };
 
@@ -36,6 +45,8 @@ export type CaptureOptions = {
   guides: GuideShape[];
   /** 전면 카메라 미러링 상태 (프리뷰와 동일하게 저장) */
   mirror: boolean;
+  filterId: string;
+  filterStrength: number;
 };
 
 export class CaptureError extends Error {}
@@ -61,9 +72,16 @@ export async function captureShot(options: CaptureOptions): Promise<CaptureShot>
   const width = Math.max(2, Math.round(sourceRect.width * downscale));
   const height = Math.max(2, Math.round(sourceRect.height * downscale));
 
+  const filterParams = mixParams(getFilter(options.filterId).params, options.filterStrength);
+  const hasFilter = !isIdentity(filterParams);
+  const useCanvasFilter = hasFilter && supportsCanvasFilter();
+
   const cleanCanvas = createCanvas(width, height);
   const cleanCtx = get2d(cleanCanvas);
   cleanCtx.save();
+  if (useCanvasFilter) {
+    cleanCtx.filter = toCssFilter(filterParams);
+  }
   if (mirror) {
     cleanCtx.translate(width, 0);
     cleanCtx.scale(-1, 1);
@@ -80,6 +98,11 @@ export async function captureShot(options: CaptureOptions): Promise<CaptureShot>
     height,
   );
   cleanCtx.restore();
+
+  // ctx.filter 를 지원하지 않는 브라우저에서는 동일한 색 행렬을 픽셀로 적용한다.
+  if (hasFilter && !useCanvasFilter) {
+    applyFilterToCanvas(cleanCtx, width, height, filterParams);
+  }
 
   const overlayCanvas = createCanvas(width, height);
   const overlayCtx = get2d(overlayCanvas);
@@ -103,6 +126,7 @@ export async function captureShot(options: CaptureOptions): Promise<CaptureShot>
     width,
     height,
     platformId: options.preset.id,
+    filterId: hasFilter ? options.filterId : "none",
     createdAt: Date.now(),
   };
 }

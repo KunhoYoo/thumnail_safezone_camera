@@ -4,6 +4,7 @@
 촬영 전에 구도를 잡을 수 있게 하는 것이 목적이며, 영상과 사진은 **기기 안에서만** 처리됩니다.
 
 - 사이트 접속 → 카메라 허용 → 3초 안에 Safe Zone 확인
+- **장면(인물 · 음식 · 제품 · 텍스트)을 고르면 구도 가이드 + 색 보정 필터가 함께 적용**
 - 서버 없이 동작 (백엔드 불필요, 설정은 localStorage)
 - PWA 설치 가능
 
@@ -136,10 +137,34 @@ Vercel은 기본적으로 HTTPS를 제공하므로 별도 설정 없이 카메�
 `Custom` 칩을 선택하면 설정 시트에서 상/하/좌/우 마진 슬라이더가 열리고, 값은 자동 저장되어 다음 방문 시 복원됩니다.
 조절 범위는 `src/store/cameraStore.ts` 의 `ZONE_RANGE` 에서 변경할 수 있습니다.
 
-### 촬영 가이드 추가
+### 장면(촬영 가이드) 추가
 
-`src/lib/guides.ts` 의 `GUIDE_OPTIONS` 와 `getGuideShapes()` 에 도형을 추가합니다.
-`rect` / `ellipse` / `hline` / `vline` / `line` 을 조합하며, 이미지 분석 없이 오버레이로만 동작합니다.
+`src/lib/guides.ts` 의 `GUIDE_OPTIONS` 와 `getGuideShapes()` 에 항목을 추가합니다.
+장면 하나는 **구도 가이드 + 추천 필터 + 촬영 팁** 세 가지를 함께 정의합니다.
+
+```ts
+{ id: "food", name: "음식", hint: "접시 중심 · 45도 구도", filterId: "food", tip: "45도 선을 따라..." }
+```
+
+도형은 `rect` / `ellipse` / `hline` / `vline` / `line` 을 조합하며, 이미지 분석 없이 오버레이로만 동작합니다.
+
+### 필터 수정 / 추가
+
+`src/lib/filters.ts` 의 `FILTERS` 배열에 파라미터를 추가하면 카메라 칩과 설정 시트에 자동으로 나타납니다.
+
+```ts
+{
+  id: "food",
+  name: "음식",
+  hint: "따뜻하고 먹음직스럽게",
+  params: { brightness: 1.04, contrast: 1.12, saturate: 1.3, sepia: 0.07, grayscale: 0, hueRotate: -4 },
+}
+```
+
+- 프리뷰는 **CSS filter**(GPU)로, 캡처는 **같은 값을 Canvas 에 적용**하므로 보이는 대로 저장됩니다.
+- `ctx.filter` 를 지원하지 않는 브라우저에서는 동일한 계수의 **색 행렬을 픽셀 단위로 적용**하는 fallback 이 동작합니다 (`applyFilterToCanvas`).
+- 필터 칩의 썸네일은 기준 그라데이션(`SWATCH_GRADIENT`)에 해당 필터를 실제로 적용한 결과입니다.
+- 강도 슬라이더는 각 파라미터를 원본 쪽으로 선형 보간합니다 (`mixParams`).
 
 ## 9. 프로젝트 구조
 

@@ -1,9 +1,12 @@
+import { getCssFilter } from "@/lib/filters";
 import { pct } from "@/lib/geometry";
 import { getBlockRects, getRecommendRects, OVERLAY_COLORS } from "@/lib/overlayPaint";
 import { getPreset } from "@/lib/presets";
 
 type Props = {
   platformId?: string;
+  /** 미리보기 장면에 적용할 필터 */
+  filterId?: string;
   className?: string;
 };
 
@@ -11,7 +14,7 @@ type Props = {
  * 랜딩용 세로 스마트폰 프레임 미리보기.
  * 실제 카메라 화면과 같은 프리셋 데이터를 사용해 예시 Safe Zone 을 그린다.
  */
-export function PhonePreview({ platformId = "youtube-shorts", className = "" }: Props) {
+export function PhonePreview({ platformId = "youtube-shorts", filterId = "portrait", className = "" }: Props) {
   const preset = getPreset(platformId);
   const blocks = getBlockRects(preset);
   const recommends = getRecommendRects(preset);
@@ -24,10 +27,12 @@ export function PhonePreview({ platformId = "youtube-shorts", className = "" }: 
       }
       aria-hidden="true"
     >
-      {/* 예시 피사체 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#33333a] via-[#212126] to-[#101013]" />
-      <div className="absolute left-1/2 top-[30%] h-[18%] w-[32%] -translate-x-1/2 rounded-full bg-white/18" />
-      <div className="absolute left-1/2 top-[46%] h-[34%] w-[56%] -translate-x-1/2 rounded-t-[999px] bg-white/12" />
+      {/* 예시 피사체 — 필터가 적용되는 영역 (오버레이는 필터 영향을 받지 않는다) */}
+      <div className="absolute inset-0" style={{ filter: getCssFilter(filterId, 1) }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4a4a52] via-[#2a2a30] to-[#121216]" />
+        <div className="absolute left-1/2 top-[30%] h-[18%] w-[32%] -translate-x-1/2 rounded-full bg-[#e8c9a0]" />
+        <div className="absolute left-1/2 top-[46%] h-[34%] w-[56%] -translate-x-1/2 rounded-t-[999px] bg-[#6d7f9c]" />
+      </div>
 
       {blocks.map((item) => (
         <div
