@@ -24,6 +24,7 @@ export function useLocalSettings(): {
       overlayOpacity: state.overlayOpacity,
       includeOverlayInCapture: state.includeOverlayInCapture,
       mirrorFrontCamera: state.mirrorFrontCamera,
+      highResolution: state.highResolution,
       guideId: state.guideId,
       filterId: state.filterId,
       filterStrength: state.filterStrength,

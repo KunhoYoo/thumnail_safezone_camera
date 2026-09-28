@@ -14,25 +14,19 @@ import { useElementSize } from "@/hooks/useElementSize";
 import { useLocalSettings } from "@/hooks/useLocalSettings";
 import { captureShot, releaseShot, type CaptureShot } from "@/lib/capture";
 import { getCssFilter } from "@/lib/filters";
-import { fitFrame, parseAspect } from "@/lib/geometry";
+import { containerRectToSource, fitFrame, parseAspect } from "@/lib/geometry";
 import { getGuideShapes } from "@/lib/guides";
 import { CUSTOM_PLATFORM_ID, PLATFORM_PRESETS, resolvePreset } from "@/lib/presets";
 import { buildFileName, canUseWebShare, downloadBlob, isIosLike, shareImage } from "@/lib/share";
-
-/** 프레임과 컨트롤 사이 여백 */
-const CONTROL_GAP = 8;
-/** 컨트롤을 제외한 높이가 이보다 작으면 화면 전체에 맞춘다. (가로 모드 등) */
-const MIN_FRAME_HEIGHT = 220;
 
 export default function CameraPage() {
   const { settings, actions, hydrated } = useLocalSettings();
 
   const [stageRef, stageSize] = useElementSize<HTMLDivElement>();
-  const [topBarRef, topBarSize] = useElementSize<HTMLDivElement>();
-  const [bottomBarRef, bottomBarSize] = useElementSize<HTMLDivElement>();
   const shotRef = useRef<CaptureShot | null>(null);
 
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [tab, setTab] = useState<BottomTab>("platform");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<SheetSection>("platform");
@@ -50,16 +44,10 @@ export default function CameraPage() {
   const aspect = useMemo(() => parseAspect(preset.aspectRatio), [preset.aspectRatio]);
 
   /**
-   * 상·하단 컨트롤이 안전영역을 가리지 않도록, 컨트롤 사이의 빈 공간에 프레임을 맞춘다.
-   * 영상 자체는 화면 전체를 cover 로 채우고 프레임 바깥은 어둡게 처리한다.
+   * 프레임은 화면을 꽉 채운다. (실제 업로드 화면과 같은 크기로 봐야 의미가 있다)
+   * 컨트롤이 하단 안전영역을 가리므로, 화면을 탭하면 컨트롤을 숨길 수 있다.
    */
-  const frame = useMemo(() => {
-    const gap = CONTROL_GAP;
-    const available = stageSize.height - topBarSize.height - bottomBarSize.height - gap * 2;
-    if (available < MIN_FRAME_HEIGHT) return fitFrame(stageSize, aspect);
-    const fitted = fitFrame({ width: stageSize.width, height: available }, aspect);
-    return { ...fitted, y: fitted.y + topBarSize.height + gap };
-  }, [stageSize, topBarSize.height, bottomBarSize.height, aspect]);
+  const frame = useMemo(() => fitFrame(stageSize, aspect), [stageSize, aspect]);
   const guides = useMemo(() => getGuideShapes(settings.guideId, aspect), [settings.guideId, aspect]);
   const cssFilter = useMemo(
     () => getCssFilter(settings.filterId, settings.filterStrength),
@@ -67,9 +55,21 @@ export default function CameraPage() {
   );
 
   // 저장된 설정을 불러오기 전에는 카메라를 시작하지 않는다. (facingMode 가 바뀌며 재시작되는 것을 막는다)
-  const camera = useCamera({ facingMode: settings.facingMode, active: hydrated });
+  const camera = useCamera({
+    facingMode: settings.facingMode,
+    active: hydrated,
+    highResolution: settings.highResolution,
+  });
   const mirrored = settings.facingMode === "user" && settings.mirrorFrontCamera;
   const cameraReady = camera.status === "ready";
+
+  /** 실제로 저장될 픽셀 크기 (프레임을 원본 해상도로 환산) */
+  const captureSize = useMemo(() => {
+    const { videoSize } = camera;
+    if (!videoSize.width || !videoSize.height || frame.width <= 0) return null;
+    const source = containerRectToSource(frame, stageSize, videoSize);
+    return { width: Math.round(source.width), height: Math.round(source.height) };
+  }, [camera, frame, stageSize]);
 
   useEffect(() => {
     if (!toast) return;
@@ -207,11 +207,27 @@ export default function CameraPage() {
           ) : null}
         </CameraView>
 
+        {/* 프리뷰를 탭하면 컨트롤이 숨겨져 하단 안전영역까지 그대로 보인다. */}
         {cameraReady ? (
+          <button
+            type="button"
+            className="absolute inset-0 z-10 cursor-default"
+            aria-label={controlsVisible ? "컨트롤 숨기기" : "컨트롤 보이기"}
+            onClick={() => setControlsVisible((value) => !value)}
+          />
+        ) : null}
+
+        {cameraReady && !controlsVisible ? (
+          <span className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-sm">
+            화면을 탭하면 컨트롤이 다시 나타납니다
+          </span>
+        ) : null}
+
+        {cameraReady && controlsVisible ? (
           <>
             <CameraTopBar
-              contentRef={topBarRef}
               presetName={preset.name}
+              captureSize={captureSize}
               canSwitchCamera={camera.hasMultipleCameras}
               onSwitchCamera={() =>
                 actions.setFacingMode(settings.facingMode === "user" ? "environment" : "user")
@@ -222,7 +238,6 @@ export default function CameraPage() {
             />
 
             <CameraBottomBar
-              contentRef={bottomBarRef}
               tab={tab}
               onTabChange={setTab}
               presets={PLATFORM_PRESETS}
@@ -236,6 +251,8 @@ export default function CameraPage() {
               filterStrength={settings.filterStrength}
               onSelectFilter={actions.setFilterId}
               onFilterStrengthChange={actions.setFilterStrength}
+              videoRef={camera.videoRef}
+              mirrored={mirrored}
               guideId={settings.guideId}
               onSelectGuide={actions.setGuideId}
               gridEnabled={settings.gridEnabled}

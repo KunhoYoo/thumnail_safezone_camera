@@ -50,8 +50,19 @@ export default function LandingPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[520px] flex-col px-safe">
       <header className="pt-safe flex items-center justify-between px-5 pb-2">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-white">
-            <span className="block h-3.5 w-2 rounded-[2px] border-2 border-black" aria-hidden="true" />
+          <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-white">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-[15px] w-[15px]"
+              fill="none"
+              stroke="#000"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10 4H6.5v3.5M14 4h3.5v3.5M10 20H6.5v-3.5M14 20h3.5v-3.5" />
+            </svg>
           </span>
           <span className="text-[15px] font-extrabold tracking-[0.14em]">SAFEFRAME</span>
         </div>

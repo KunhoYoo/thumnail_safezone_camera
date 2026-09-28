@@ -65,31 +65,10 @@ function fillRoundRect(surface, rect, color, alpha = 1) {
   }
 }
 
-function strokeRoundRect(surface, rect, color, thickness, alpha = 1) {
-  const { x, y, w, h, r = 0 } = rect;
-  const x0 = Math.max(0, Math.floor(x - thickness));
-  const y0 = Math.max(0, Math.floor(y - thickness));
-  const x1 = Math.min(surface.size - 1, Math.ceil(x + w + thickness));
-  const y1 = Math.min(surface.size - 1, Math.ceil(y + h + thickness));
-  const inner = {
-    x: x + thickness,
-    y: y + thickness,
-    w: w - thickness * 2,
-    h: h - thickness * 2,
-    r: Math.max(0, r - thickness),
-  };
-  for (let py = y0; py <= y1; py += 1) {
-    for (let px = x0; px <= x1; px += 1) {
-      const cx = px + 0.5;
-      const cy = py + 0.5;
-      if (!insideRoundRect(cx, cy, x, y, w, h, r)) continue;
-      if (insideRoundRect(cx, cy, inner.x, inner.y, inner.w, inner.h, inner.r)) continue;
-      blend(surface, px, py, color, alpha);
-    }
-  }
-}
-
-/** 검정 배경 + 9:16 흰 프레임 + 플랫폼 UI 가림 영역(빨강) */
+/**
+ * 모노크롬 크롭 마크 아이콘.
+ * 작은 크기에서도 읽히도록 색과 요소를 최소화하고, 네 모서리 브래킷으로 "안전 영역"을 표현한다.
+ */
 function drawIcon(size, { maskable = false, squareBackground = false } = {}) {
   const S = size * SUPERSAMPLE;
   const surface = createSurface(S);
@@ -101,52 +80,57 @@ function drawIcon(size, { maskable = false, squareBackground = false } = {}) {
     1,
   );
 
-  const inset = maskable ? S * 0.22 : S * 0.15;
-  const boxW = S - inset * 2;
+  const inset = maskable ? S * 0.28 : S * 0.2;
   const boxH = S - inset * 2;
   let frameH = boxH;
   let frameW = (frameH * 9) / 16;
-  if (frameW > boxW) {
-    frameW = boxW;
+  if (frameW > S - inset * 2) {
+    frameW = S - inset * 2;
     frameH = (frameW * 16) / 9;
   }
   const frameX = (S - frameW) / 2;
   const frameY = (S - frameH) / 2;
-  const radius = frameW * 0.1;
-  const stroke = Math.max(1, S * 0.026);
+  const stroke = Math.max(1, S * 0.035);
+  const armX = frameW * 0.3;
+  const armY = frameH * 0.22;
 
-  // 가림 영역
-  fillRoundRect(surface, { x: frameX, y: frameY, w: frameW, h: frameH * 0.12, r: radius * 0.6 }, COLORS.block, 0.9);
+  // 네 모서리 브래킷 (크롭 마크)
+  const corners = [
+    [frameX, frameY, 1, 1],
+    [frameX + frameW, frameY, -1, 1],
+    [frameX, frameY + frameH, 1, -1],
+    [frameX + frameW, frameY + frameH, -1, -1],
+  ];
+  for (const [cx, cy, dx, dy] of corners) {
+    const hx = dx > 0 ? cx : cx - armX;
+    fillRoundRect(surface, { x: hx, y: dy > 0 ? cy : cy - stroke, w: armX, h: stroke, r: stroke / 2 }, COLORS.frame, 1);
+    const vy = dy > 0 ? cy : cy - armY;
+    fillRoundRect(surface, { x: dx > 0 ? cx : cx - stroke, y: vy, w: stroke, h: armY, r: stroke / 2 }, COLORS.frame, 1);
+  }
+
+  // 가려지는 영역을 암시하는 얇은 가로 선 두 개
+  const hint = Math.max(1, S * 0.022);
   fillRoundRect(
     surface,
-    { x: frameX, y: frameY + frameH * 0.8, w: frameW, h: frameH * 0.2, r: radius * 0.6 },
-    COLORS.block,
-    0.9,
+    { x: frameX + frameW * 0.28, y: frameY + frameH * 0.31, w: frameW * 0.44, h: hint, r: hint / 2 },
+    COLORS.frame,
+    0.32,
   );
   fillRoundRect(
     surface,
-    { x: frameX + frameW * 0.74, y: frameY + frameH * 0.38, w: frameW * 0.26, h: frameH * 0.34, r: radius * 0.5 },
-    COLORS.block,
+    { x: frameX + frameW * 0.28, y: frameY + frameH * 0.69 - hint, w: frameW * 0.44, h: hint, r: hint / 2 },
+    COLORS.frame,
+    0.32,
+  );
+
+  // 중앙 초점 점
+  const dot = S * 0.032;
+  fillRoundRect(
+    surface,
+    { x: S / 2 - dot / 2, y: S / 2 - dot / 2, w: dot, h: dot, r: dot / 2 },
+    COLORS.frame,
     0.9,
   );
-
-  // 권장 영역
-  strokeRoundRect(
-    surface,
-    {
-      x: frameX + frameW * 0.16,
-      y: frameY + frameH * 0.24,
-      w: frameW * 0.5,
-      h: frameH * 0.42,
-      r: radius * 0.4,
-    },
-    COLORS.safe,
-    Math.max(1, stroke * 0.55),
-    0.95,
-  );
-
-  // 프레임
-  strokeRoundRect(surface, { x: frameX, y: frameY, w: frameW, h: frameH, r: radius }, COLORS.frame, stroke, 1);
 
   return downsample(surface, size);
 }

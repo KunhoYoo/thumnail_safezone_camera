@@ -56,6 +56,8 @@ const ERROR_COPY: Record<CameraErrorCode, CameraError> = {
 
 type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
 type TorchConstraintSet = MediaTrackConstraintSet & { torch?: boolean };
+/** resizeMode 는 아직 표준 타입에 없지만 Chrome 계열에서 동작한다. */
+type ResizeConstraints = MediaTrackConstraints & { resizeMode?: { ideal: string } };
 
 export type CameraController = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -69,8 +71,13 @@ export type CameraController = {
   toggleTorch: () => Promise<void>;
 };
 
-export function useCamera(params: { facingMode: FacingMode; active: boolean }): CameraController {
-  const { facingMode, active } = params;
+export function useCamera(params: {
+  facingMode: FacingMode;
+  active: boolean;
+  /** 기기가 지원하는 최대 해상도로 요청할지 여부 */
+  highResolution: boolean;
+}): CameraController {
+  const { facingMode, active, highResolution } = params;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -130,9 +137,11 @@ export function useCamera(params: { facingMode: FacingMode; active: boolean }): 
         stream = await mediaDevices.getUserMedia({
           video: {
             facingMode,
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+            // 저장 화질은 여기서 결정된다. 프레임 일부만 잘라내므로 원본이 클수록 결과가 선명하다.
+            width: { ideal: highResolution ? 3840 : 1920 },
+            height: { ideal: highResolution ? 2160 : 1080 },
+            // 브라우저가 임의로 축소/크롭하지 않도록 한다.
+          } as ResizeConstraints,
           audio: false,
         });
       } catch (firstError) {
@@ -168,6 +177,7 @@ export function useCamera(params: { facingMode: FacingMode; active: boolean }): 
 
       const [track] = stream.getVideoTracks();
       if (track) {
+        if (highResolution) await upgradeResolution(track);
         const settings = track.getSettings();
         if (settings.width && settings.height) {
           setVideoSize({ width: settings.width, height: settings.height });
@@ -196,7 +206,7 @@ export function useCamera(params: { facingMode: FacingMode; active: boolean }): 
       requestIdRef.current += 1;
       stopStream();
     };
-  }, [active, facingMode, retryToken, stopStream]);
+  }, [active, facingMode, highResolution, retryToken, stopStream]);
 
   // 실제 비디오 해상도는 메타데이터 로드 이후 / 회전 시점에 바뀔 수 있다.
   useEffect(() => {
@@ -268,6 +278,33 @@ export function useCamera(params: { facingMode: FacingMode; active: boolean }): 
     retry,
     toggleTorch,
   };
+}
+
+/**
+ * 첫 요청이 낮은 해상도로 잡힌 경우, 기기가 보고한 최대 해상도로 한 번 더 올려본다.
+ * ideal 로만 요청하므로 실패하지 않고, 지원하지 않으면 그대로 유지된다.
+ */
+async function upgradeResolution(track: MediaStreamTrack): Promise<void> {
+  try {
+    const capabilities = track.getCapabilities?.();
+    const settings = track.getSettings();
+    const maxWidth = capabilities?.width?.max;
+    const maxHeight = capabilities?.height?.max;
+    if (!maxWidth || !maxHeight) return;
+
+    const currentShortEdge = Math.min(settings.width ?? 0, settings.height ?? 0);
+    const maxShortEdge = Math.min(maxWidth, maxHeight);
+    // 이미 최대에 가깝다면 건드리지 않는다. (불필요한 재협상은 프리뷰가 끊길 수 있다)
+    if (currentShortEdge >= maxShortEdge * 0.9) return;
+
+    await track.applyConstraints({
+      width: { ideal: maxWidth },
+      height: { ideal: maxHeight },
+      resizeMode: { ideal: "none" },
+    } as ResizeConstraints);
+  } catch {
+    // 해상도 상향은 부가 기능이므로 실패해도 촬영에는 영향이 없다.
+  }
 }
 
 function isOverconstrained(error: unknown): boolean {

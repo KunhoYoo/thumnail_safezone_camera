@@ -18,9 +18,10 @@ export const DEFAULT_SETTINGS: UserCameraSettings = {
   overlayOpacity: 0.85,
   includeOverlayInCapture: false,
   mirrorFrontCamera: true,
+  highResolution: true,
   guideId: "none",
   filterId: DEFAULT_FILTER_ID,
-  filterStrength: 0.8,
+  filterStrength: 1,
   zoneStyle: "fill",
   labelsEnabled: true,
   customZones: { top: 0.12, bottom: 0.18, left: 0.06, right: 0.12 },
@@ -67,6 +68,9 @@ export const settingsActions = {
   setMirrorFrontCamera(mirrorFrontCamera: boolean) {
     useCameraStore.setState({ mirrorFrontCamera });
   },
+  setHighResolution(highResolution: boolean) {
+    useCameraStore.setState({ highResolution });
+  },
   /** 장면을 고르면 추천 필터가 함께 적용된다. (필터는 이후 개별 변경 가능) */
   setGuideId(guideId: GuideId) {
     useCameraStore.setState({ guideId, filterId: getGuide(guideId).filterId });
@@ -112,6 +116,7 @@ function sanitize(persisted: unknown, fallback: UserCameraSettings): UserCameraS
         : fallback.overlayOpacity,
     includeOverlayInCapture: toBoolean(raw.includeOverlayInCapture, fallback.includeOverlayInCapture),
     mirrorFrontCamera: toBoolean(raw.mirrorFrontCamera, fallback.mirrorFrontCamera),
+    highResolution: toBoolean(raw.highResolution, fallback.highResolution),
     guideId: raw.guideId && GUIDE_IDS.includes(raw.guideId) ? raw.guideId : fallback.guideId,
     filterId: typeof raw.filterId === "string" ? getFilter(raw.filterId).id : fallback.filterId,
     filterStrength:

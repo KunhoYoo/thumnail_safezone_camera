@@ -11,10 +11,10 @@ import type { GuideShape } from "@/lib/guides";
 import { paintOverlay } from "@/lib/overlayPaint";
 import type { PlatformPreset, ZoneStyle } from "@/types/camera";
 
-/** 캡처 결과 긴 변 최대 길이 (메모리/공유 용량 보호) */
-const MAX_LONG_EDGE = 2560;
+/** 캡처 결과 긴 변 최대 길이 (메모리/공유 용량 보호). 대부분의 기기는 이 값에 닿지 않는다. */
+const MAX_LONG_EDGE = 4096;
 const MIME_TYPE = "image/jpeg";
-const QUALITY = 0.92;
+const QUALITY = 0.95;
 
 export type CaptureVariant = { blob: Blob; url: string };
 

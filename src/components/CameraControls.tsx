@@ -2,7 +2,7 @@
 
 import { Eye, EyeOff, Grid3x3, Lightbulb, SlidersHorizontal, SwitchCamera, Wand2, X, Zap, ZapOff } from "lucide-react";
 import Link from "next/link";
-import type { Ref } from "react";
+import type { Ref, RefObject } from "react";
 
 import { CaptureButton } from "@/components/CaptureButton";
 import { FilterSelector } from "@/components/FilterSelector";
@@ -15,6 +15,12 @@ import type { GuideId, PlatformPreset } from "@/types/camera";
 const ICON_BUTTON =
   "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors active:bg-black/60 disabled:opacity-35";
 
+/** 640×1138 -> "0.7MP" 처럼 표기 */
+export function formatMegapixels(width: number, height: number): string {
+  const megapixels = (width * height) / 1_000_000;
+  return (megapixels >= 10 ? Math.round(megapixels) : Math.round(megapixels * 10) / 10) + "MP";
+}
+
 export type BottomTab = "platform" | "filter" | "scene";
 
 const TABS: { id: BottomTab; label: string }[] = [
@@ -26,6 +32,8 @@ const TABS: { id: BottomTab; label: string }[] = [
 type TopBarProps = {
   contentRef?: Ref<HTMLDivElement>;
   presetName: string;
+  /** 저장될 픽셀 크기 (없으면 표시하지 않음) */
+  captureSize: { width: number; height: number } | null;
   canSwitchCamera: boolean;
   onSwitchCamera: () => void;
   torchSupported: boolean;
@@ -36,6 +44,7 @@ type TopBarProps = {
 export function CameraTopBar({
   contentRef,
   presetName,
+  captureSize,
   canSwitchCamera,
   onSwitchCamera,
   torchSupported,
@@ -49,10 +58,18 @@ export function CameraTopBar({
           <X size={22} strokeWidth={2} aria-hidden="true" />
         </Link>
 
-        <div className="flex-1 text-center">
+        <div className="flex flex-1 items-center justify-center gap-1.5">
           <span className="rounded-full bg-black/40 px-3 py-1.5 text-[12px] font-semibold tracking-tight backdrop-blur-sm">
             {presetName}
           </span>
+          {captureSize ? (
+            <span
+              className="rounded-full bg-black/40 px-2 py-1.5 text-[11px] font-semibold tabular-nums text-white/65 backdrop-blur-sm"
+              title={"저장 크기 " + captureSize.width + " × " + captureSize.height}
+            >
+              {formatMegapixels(captureSize.width, captureSize.height)}
+            </span>
+          ) : null}
         </div>
 
         {torchSupported ? (
@@ -96,6 +113,8 @@ type BottomBarProps = {
   filterStrength: number;
   onSelectFilter: (filterId: string) => void;
   onFilterStrengthChange: (value: number) => void;
+  videoRef: RefObject<HTMLVideoElement | null>;
+  mirrored: boolean;
   guideId: GuideId;
   onSelectGuide: (guideId: GuideId) => void;
   gridEnabled: boolean;
@@ -122,6 +141,8 @@ export function CameraBottomBar(props: BottomBarProps) {
     filterStrength,
     onSelectFilter,
     onFilterStrengthChange,
+    videoRef,
+    mirrored,
     guideId,
     onSelectGuide,
     gridEnabled,
@@ -248,7 +269,13 @@ export function CameraBottomBar(props: BottomBarProps) {
           ) : null}
 
           {tab === "filter" ? (
-            <FilterSelector activeId={filterId} strength={filterStrength} onSelect={onSelectFilter} />
+            <FilterSelector
+              activeId={filterId}
+              strength={filterStrength}
+              onSelect={onSelectFilter}
+              videoRef={videoRef}
+              mirrored={mirrored}
+            />
           ) : null}
 
           {tab === "scene" ? (

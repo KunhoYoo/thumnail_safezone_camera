@@ -63,6 +63,8 @@ export type UserCameraSettings = {
   overlayOpacity: number;
   includeOverlayInCapture: boolean;
   mirrorFrontCamera: boolean;
+  /** 카메라를 지원 가능한 최대 해상도로 요청 */
+  highResolution: boolean;
   /** 장면 가이드 (인물/제품/음식/텍스트) */
   guideId: GuideId;
   /** 촬영 필터 */
